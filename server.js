@@ -1,15 +1,15 @@
 const crypto = require("crypto");
 const path = require("path");
 
+const Database = require("better-sqlite3");
 const cors = require("cors");
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, "expenses.sqlite");
 
 const app = express();
-const db = new sqlite3.Database(DB_PATH);
+const db = new Database(DB_PATH);
 
 app.disable("x-powered-by");
 app.use(cors());
@@ -17,50 +17,27 @@ app.use(express.json({ limit: "16kb" }));
 app.use(express.static(__dirname, { index: false }));
 
 function run(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function onRun(error) {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
+  const result = db.prepare(sql).run(...params);
+  return {
+    lastID: Number(result.lastInsertRowid),
+    changes: result.changes,
+  };
 }
 
 function get(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (error, row) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      resolve(row);
-    });
-  });
+  return db.prepare(sql).get(...params);
 }
 
 function all(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (error, rows) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      resolve(rows);
-    });
-  });
+  return db.prepare(sql).all(...params);
 }
 
-async function initializeDatabase() {
-  await run("PRAGMA journal_mode = WAL");
-  await run("PRAGMA foreign_keys = ON");
-  await run("PRAGMA busy_timeout = 5000");
+function initializeDatabase() {
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+  db.pragma("busy_timeout = 5000");
 
-  await run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       amount REAL NOT NULL CHECK (amount > 0),
@@ -71,7 +48,7 @@ async function initializeDatabase() {
     )
   `);
 
-  await run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS expense_idempotency (
       idempotency_key TEXT PRIMARY KEY,
       request_hash TEXT NOT NULL,
@@ -81,8 +58,8 @@ async function initializeDatabase() {
     )
   `);
 
-  await run("CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)");
-  await run("CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)");
 }
 
 function createHttpError(status, message) {
@@ -167,7 +144,7 @@ function getIdempotencyKey(req, normalizedExpense) {
   return `body:${hashPayload(normalizedExpense)}`;
 }
 
-async function findExpenseById(id) {
+function findExpenseById(id) {
   return get(
     `
       SELECT id, amount, category, description, date, created_at
@@ -178,11 +155,9 @@ async function findExpenseById(id) {
   );
 }
 
-async function createExpenseWithIdempotency(expense, idempotencyKey, requestHash) {
-  await run("BEGIN IMMEDIATE TRANSACTION");
-
-  try {
-    const existingRequest = await get(
+const createExpenseWithIdempotency = db.transaction(
+  (expense, idempotencyKey, requestHash) => {
+    const existingRequest = get(
       `
         SELECT expense_id, request_hash
         FROM expense_idempotency
@@ -199,12 +174,11 @@ async function createExpenseWithIdempotency(expense, idempotencyKey, requestHash
         );
       }
 
-      const existingExpense = await findExpenseById(existingRequest.expense_id);
-      await run("COMMIT");
+      const existingExpense = findExpenseById(existingRequest.expense_id);
       return { expense: existingExpense, replayed: true };
     }
 
-    const insertResult = await run(
+    const insertResult = run(
       `
         INSERT INTO expenses (amount, category, description, date)
         VALUES (?, ?, ?, ?)
@@ -212,7 +186,7 @@ async function createExpenseWithIdempotency(expense, idempotencyKey, requestHash
       [expense.amount, expense.category, expense.description, expense.date]
     );
 
-    await run(
+    run(
       `
         INSERT INTO expense_idempotency (idempotency_key, request_hash, expense_id)
         VALUES (?, ?, ?)
@@ -220,14 +194,10 @@ async function createExpenseWithIdempotency(expense, idempotencyKey, requestHash
       [idempotencyKey, requestHash, insertResult.lastID]
     );
 
-    const createdExpense = await findExpenseById(insertResult.lastID);
-    await run("COMMIT");
+    const createdExpense = findExpenseById(insertResult.lastID);
     return { expense: createdExpense, replayed: false };
-  } catch (error) {
-    await run("ROLLBACK").catch(() => undefined);
-    throw error;
   }
-}
+);
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
@@ -322,21 +292,22 @@ app.use((error, req, res, next) => {
   res.status(status).json(response);
 });
 
-initializeDatabase()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Expense Tracker API listening on port ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error("Failed to initialize database.", error);
-    process.exit(1);
+try {
+  initializeDatabase();
+  app.listen(PORT, () => {
+    console.log(`Expense Tracker API listening on port ${PORT}`);
   });
+} catch (error) {
+  console.error("Failed to initialize database.", error);
+  process.exit(1);
+}
 
 process.on("SIGINT", () => {
-  db.close(() => process.exit(0));
+  db.close();
+  process.exit(0);
 });
 
 process.on("SIGTERM", () => {
-  db.close(() => process.exit(0));
+  db.close();
+  process.exit(0);
 });

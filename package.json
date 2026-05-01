@@ -4,7 +4,7 @@
   "description": "Production-ready full-stack Expense Tracker assessment using Express and SQLite.",
   "main": "server.js",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "start": "node server.js",
@@ -23,8 +23,8 @@
   },
   "homepage": "https://github.com/23bsm038-Mahi/fenmo-assessment#readme",
   "dependencies": {
+    "better-sqlite3": "^12.9.0",
     "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "sqlite3": "^6.0.1"
+    "express": "^5.2.1"
   }
 }
