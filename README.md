@@ -22,6 +22,18 @@ http://localhost:3000
 
 The API and frontend are served by the same Express server. The SQLite database is created automatically as `expenses.sqlite`.
 
+## Deploy on Render
+
+Use a Render Web Service with these settings:
+
+- Runtime: Node
+- Build command: `npm install`
+- Start command: `npm start`
+
+Do not commit `node_modules` or SQLite database files. Render runs `npm install` on Linux during each deploy, which installs the correct Linux build of `sqlite3`. Committing Windows-built `node_modules` can cause errors such as `invalid ELF header sqlite3`.
+
+Render provides `process.env.PORT`; the server uses that value automatically and falls back to `3000` for local development.
+
 ## API
 
 ### POST /expenses
