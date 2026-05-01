@@ -1,0 +1,27 @@
+{
+  "name": "fenmo-assessment",
+  "version": "1.0.0",
+  "description": "Production-ready full-stack Expense Tracker assessment using Express and SQLite.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/23bsm038-Mahi/fenmo-assessment.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/23bsm038-Mahi/fenmo-assessment/issues"
+  },
+  "homepage": "https://github.com/23bsm038-Mahi/fenmo-assessment#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "sqlite3": "^6.0.1"
+  }
+}

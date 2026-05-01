@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Expense Tracker</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #647084;
+        --line: #dde3ee;
+        --accent: #2563eb;
+        --accent-dark: #1d4ed8;
+        --danger: #b42318;
+        --danger-bg: #fff1f0;
+        --success-bg: #effaf3;
+        --success: #137333;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 32px auto;
+      }
+
+      header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.1;
+      }
+
+      .total {
+        min-width: 180px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        text-align: right;
+      }
+
+      .total span {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .total strong {
+        font-size: 24px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      form,
+      .table-wrap {
+        padding: 18px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 14px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      input,
+      select,
+      button {
+        width: 100%;
+        min-height: 42px;
+        border-radius: 6px;
+        font: inherit;
+      }
+
+      input,
+      select {
+        display: block;
+        margin-top: 6px;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--text);
+      }
+
+      input:focus,
+      select:focus {
+        outline: 3px solid rgba(37, 99, 235, 0.14);
+        border-color: var(--accent);
+      }
+
+      button {
+        border: 0;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button:hover {
+        background: var(--accent-dark);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .filters {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .filters label {
+        margin: 0;
+      }
+
+      .filters select {
+        width: 180px;
+        margin: 0;
+      }
+
+      .status {
+        margin: 0 18px 18px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+
+      .status.error {
+        background: var(--danger-bg);
+        color: var(--danger);
+      }
+
+      .status.success {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+
+      .status.info {
+        background: #eef4ff;
+        color: #1e40af;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      td.amount {
+        text-align: right;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .empty {
+        padding: 36px 18px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      @media (max-width: 820px) {
+        header,
+        .grid {
+          display: block;
+        }
+
+        .total {
+          margin-top: 16px;
+          text-align: left;
+        }
+
+        section {
+          margin-bottom: 20px;
+        }
+
+        .panel-header {
+          display: block;
+        }
+
+        .filters {
+          margin-top: 12px;
+        }
+
+        .table-wrap {
+          overflow-x: auto;
+        }
+
+        table {
+          min-width: 680px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Expense Tracker</h1>
+        </div>
+        <div class="total" aria-live="polite">
+          <span>Total amount</span>
+          <strong id="totalAmount">$0.00</strong>
+        </div>
+      </header>
+
+      <div class="grid">
+        <section>
+          <div class="panel-header">
+            <h2>Add Expense</h2>
+          </div>
+          <form id="expenseForm">
+            <label>
+              Amount
+              <input id="amount" name="amount" type="number" min="0.01" step="0.01" required />
+            </label>
+            <label>
+              Category
+              <input id="category" name="category" type="text" required />
+            </label>
+            <label>
+              Description
+              <input id="description" name="description" type="text" />
+            </label>
+            <label>
+              Date
+              <input id="date" name="date" type="date" required />
+            </label>
+            <button id="submitButton" type="submit">Add expense</button>
+          </form>
+          <p id="formStatus" class="status hidden" role="status"></p>
+        </section>
+
+        <section>
+          <div class="panel-header">
+            <h2>Expenses</h2>
+            <div class="filters">
+              <label for="categoryFilter">Category</label>
+              <select id="categoryFilter">
+                <option value="">All categories</option>
+              </select>
+            </div>
+          </div>
+          <p id="listStatus" class="status hidden" role="status"></p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th style="text-align: right">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="expensesBody"></tbody>
+            </table>
+            <div id="emptyState" class="empty hidden">No expenses found.</div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const API_BASE_URL =
+        window.API_BASE_URL ||
+        (window.location.protocol === "file:" ? "http://localhost:3000" : "");
+
+      const currencyFormatter = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
+
+      const form = document.querySelector("#expenseForm");
+      const submitButton = document.querySelector("#submitButton");
+      const formStatus = document.querySelector("#formStatus");
+      const listStatus = document.querySelector("#listStatus");
+      const expensesBody = document.querySelector("#expensesBody");
+      const emptyState = document.querySelector("#emptyState");
+      const totalAmount = document.querySelector("#totalAmount");
+      const categoryFilter = document.querySelector("#categoryFilter");
+      const dateInput = document.querySelector("#date");
+
+      let expenses = [];
+      let isSubmitting = false;
+
+      dateInput.valueAsDate = new Date();
+
+      function showStatus(element, message, type) {
+        element.textContent = message;
+        element.className = `status ${type}`;
+      }
+
+      function hideStatus(element) {
+        element.textContent = "";
+        element.className = "status hidden";
+      }
+
+      function getErrorMessage(payload, fallback) {
+        if (!payload || !payload.error) {
+          return fallback;
+        }
+
+        if (Array.isArray(payload.error.details) && payload.error.details.length > 0) {
+          return `${payload.error.message} ${payload.error.details.join(" ")}`;
+        }
+
+        return payload.error.message || fallback;
+      }
+
+      async function request(path, options = {}) {
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+          },
+          ...options,
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(getErrorMessage(payload, "Request failed."));
+        }
+
+        return payload;
+      }
+
+      function buildIdempotencyKey() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return window.crypto.randomUUID();
+        }
+
+        return `expense-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function validateExpense(expense) {
+        if (!Number.isFinite(expense.amount) || expense.amount <= 0) {
+          return "Amount must be greater than 0.";
+        }
+
+        if (!expense.category) {
+          return "Category is required.";
+        }
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(expense.date)) {
+          return "Date is required.";
+        }
+
+        return "";
+      }
+
+      function renderCategoryOptions() {
+        const selected = categoryFilter.value;
+        const categories = [...new Set(expenses.map((expense) => expense.category))]
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+
+        categoryFilter.innerHTML = '<option value="">All categories</option>';
+        for (const category of categories) {
+          const option = document.createElement("option");
+          option.value = category;
+          option.textContent = category;
+          categoryFilter.append(option);
+        }
+
+        categoryFilter.value = categories.includes(selected) ? selected : "";
+      }
+
+      function renderExpenses() {
+        const selectedCategory = categoryFilter.value;
+        const visibleExpenses = selectedCategory
+          ? expenses.filter((expense) => expense.category === selectedCategory)
+          : expenses;
+
+        expensesBody.innerHTML = "";
+
+        for (const expense of visibleExpenses) {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${escapeHtml(expense.date)}</td>
+            <td>${escapeHtml(expense.category)}</td>
+            <td>${escapeHtml(expense.description)}</td>
+            <td class="amount">${currencyFormatter.format(Number(expense.amount))}</td>
+          `;
+          expensesBody.append(row);
+        }
+
+        const total = visibleExpenses.reduce(
+          (sum, expense) => sum + Number(expense.amount || 0),
+          0
+        );
+        totalAmount.textContent = currencyFormatter.format(total);
+        emptyState.classList.toggle("hidden", visibleExpenses.length > 0);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      async function loadExpenses() {
+        showStatus(listStatus, "Loading expenses...", "info");
+
+        try {
+          const payload = await request("/expenses?sort=date_desc");
+          expenses = payload.data || [];
+          renderCategoryOptions();
+          renderExpenses();
+          hideStatus(listStatus);
+        } catch (error) {
+          showStatus(listStatus, error.message, "error");
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (isSubmitting) {
+          return;
+        }
+
+        hideStatus(formStatus);
+
+        const formData = new FormData(form);
+        const expense = {
+          amount: Number(formData.get("amount")),
+          category: String(formData.get("category") || "").trim(),
+          description: String(formData.get("description") || "").trim(),
+          date: String(formData.get("date") || ""),
+        };
+        const validationError = validateExpense(expense);
+
+        if (validationError) {
+          showStatus(formStatus, validationError, "error");
+          return;
+        }
+
+        isSubmitting = true;
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving...";
+
+        try {
+          await request("/expenses", {
+            method: "POST",
+            headers: {
+              "Idempotency-Key": buildIdempotencyKey(),
+            },
+            body: JSON.stringify(expense),
+          });
+
+          form.reset();
+          dateInput.valueAsDate = new Date();
+          showStatus(formStatus, "Expense saved.", "success");
+          await loadExpenses();
+        } catch (error) {
+          showStatus(formStatus, error.message, "error");
+        } finally {
+          isSubmitting = false;
+          submitButton.disabled = false;
+          submitButton.textContent = "Add expense";
+        }
+      });
+
+      categoryFilter.addEventListener("change", renderExpenses);
+
+      loadExpenses();
+    </script>
+  </body>
+</html>
